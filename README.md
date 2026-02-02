@@ -25,10 +25,16 @@ Si quieres habilitar “Crear copias compatibles”, coloca los binarios aquí:
 
 Luego vuelve a ejecutar `build.bat` o copia la carpeta `tools` dentro del `dist\iImport\`.
 
-## Datos y configuración
-- **Config portable**: `config.json` junto al `.exe` (idioma, estructura, última carpeta, opciones).
-- **Temporales**: `._cache` junto al `.exe` o `Destino\.tmp_import` durante la importación.
-- **Logs**: `Destino\iImport_logs\import_YYYYMMDD_HHMMSS.log`
+## Portable data layout
+- **Config**: `config.json` junto al `.exe` (idioma, estructura, última carpeta, opciones).
+- **Caché**: `_cache\` junto al `.exe` (comtypes, escaneo).
+- **Temporales**: `Destino\.tmp_import\` durante la importación.
+- **Logs**: `Destino\iImport_logs\import_YYYYMMDD_HHMMSS.log`.
+- No se usa AppData por lógica propia de la app.
+
+## Troubleshooting
+Ver `docs\TROUBLESHOOTING.md`.
+Guía rápida: `docs\GUIA_RAPIDA.md`.
 
 ## Tests
 ```bat
