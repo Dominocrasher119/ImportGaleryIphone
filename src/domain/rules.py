@@ -12,8 +12,29 @@ RESERVED_NAMES = {
     'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9',
 }
 
+MAX_FILE_NAME = 150
+MAX_FOLDER_NAME = 60
 
-def sanitize_filename(name: str, fallback: str = 'file') -> str:
+
+def truncate_filename(name: str, max_length: int = MAX_FILE_NAME) -> str:
+    if len(name) <= max_length:
+        return name
+    ext = Path(name).suffix
+    if not ext:
+        return name[:max_length]
+    stem = Path(name).stem
+    max_stem = max_length - len(ext)
+    if max_stem <= 0:
+        return ext[-max_length:]
+    return f'{stem[:max_stem]}{ext}'
+
+
+def sanitize_filename(
+    name: str,
+    fallback: str = 'file',
+    max_length: int | None = None,
+    preserve_extension: bool = False,
+) -> str:
     if not name:
         return fallback
     name = WINDOWS_CONTROL_RE.sub('_', name)
@@ -21,6 +42,14 @@ def sanitize_filename(name: str, fallback: str = 'file') -> str:
     name = name.strip(' .')
     if not name:
         return fallback
+    if max_length and len(name) > max_length:
+        if preserve_extension:
+            name = truncate_filename(name, max_length)
+        else:
+            name = name[:max_length]
+        name = name.strip(' .')
+        if not name:
+            return fallback
     if name.upper() in RESERVED_NAMES:
         name = f'_{name}'
     return name
@@ -74,7 +103,7 @@ def apply_template(template: str, tokens: dict[str, str]) -> Path:
     text = text.replace('\\', '/').strip('/')
     if not text:
         return Path('')
-    parts = [sanitize_filename(p, 'folder') for p in text.split('/') if p]
+    parts = [sanitize_filename(p, 'folder', max_length=MAX_FOLDER_NAME) for p in text.split('/') if p]
     return Path(*parts)
 
 

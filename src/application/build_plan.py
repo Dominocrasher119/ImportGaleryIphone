@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Iterable
 
 from domain import DeviceInfo, ImportOptions, ImportPlan, MediaItem, PlanItem
-from domain.rules import apply_template, build_base_filename, build_tokens, preset_to_template
+from domain.rules import apply_template, build_base_filename, build_tokens, preset_to_template, truncate_filename
 
 TYPE_LABELS = {
     'es': {'photo': 'Fotos', 'video': 'Vídeos', 'other': 'Media'},
@@ -68,7 +68,7 @@ def build_plan(device: DeviceInfo, items: Iterable[MediaItem], options: ImportOp
         )
         folder = apply_template(template, tokens)
         base = build_base_filename(item.name, created)
-        filename = f'{base}{item.extension}'
+        filename = truncate_filename(f'{base}{item.extension}')
         rel_path = folder / filename if str(folder) else Path(filename)
         abs_path = options.destination / rel_path
         plan_items.append(
