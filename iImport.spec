@@ -2,7 +2,8 @@
 import os
 from PyInstaller.utils.hooks import collect_submodules
 
-project_dir = os.path.abspath(os.path.dirname(__file__))
+spec_file = globals().get('__specfile__', 'iImport.spec')
+project_dir = os.path.abspath(os.path.dirname(spec_file))
 src_dir = os.path.join(project_dir, 'src')
 
 datas = [

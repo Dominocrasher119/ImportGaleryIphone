@@ -208,8 +208,8 @@ class WizardWindow(QtWidgets.QMainWindow):
     def refresh_devices(self) -> None:
         try:
             devices = detect_iphone_devices()
-        except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, 'iImport', str(exc))
+        except Exception:
+            # COM error or other WPD issue - show empty list
             devices = []
         self._devices = devices
         self.device_page.set_devices(self._devices)

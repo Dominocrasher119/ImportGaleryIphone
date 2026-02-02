@@ -1,0 +1,8 @@
+{
+  "language": "ca",
+  "structure_preset": "A",
+  "template": "{YYYY}/{MM}/",
+  "last_destination": "",
+  "keep_live": true,
+  "create_compat": false
+}

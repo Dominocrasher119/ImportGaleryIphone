@@ -23,6 +23,7 @@ class Translator(QtCore.QObject):
             path = resource_path(
                 f'ui/i18n/{code}.json',
                 f'src/ui/i18n/{code}.json',
+                f'i18n/{code}.json',
             )
             try:
                 data = json.loads(path.read_text(encoding='utf-8'))

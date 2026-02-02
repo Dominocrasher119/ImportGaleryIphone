@@ -11,7 +11,6 @@ class StepIndicator(QtWidgets.QWidget):
     def __init__(self, translator) -> None:
         super().__init__()
         self._tr = translator
-        self._result = None
         self._labels: list[QtWidgets.QLabel] = []
         self._layout = QtWidgets.QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -194,7 +193,7 @@ class OptionsPage(QtWidgets.QWidget):
         self.dest_edit = QtWidgets.QLineEdit()
         self.dest_btn = QtWidgets.QPushButton()
         self.dest_btn.clicked.connect(self.browse_requested.emit)
-        self.dest_edit.textChanged.connect(self.options_changed.emit)
+        self.dest_edit.textChanged.connect(self._emit_options_changed)
 
         dest_row = QtWidgets.QHBoxLayout()
         dest_row.addWidget(self.dest_edit, 1)
@@ -202,7 +201,7 @@ class OptionsPage(QtWidgets.QWidget):
 
         self.structure_label = QtWidgets.QLabel()
         self.preset_combo = QtWidgets.QComboBox()
-        self.preset_combo.currentIndexChanged.connect(self.options_changed.emit)
+        self.preset_combo.currentIndexChanged.connect(self._emit_options_changed)
 
         self.advanced_toggle = QtWidgets.QPushButton()
         self.advanced_toggle.setCheckable(True)
@@ -215,7 +214,7 @@ class OptionsPage(QtWidgets.QWidget):
         self.template_edit = QtWidgets.QLineEdit()
         self.template_hint = QtWidgets.QLabel()
         self.template_hint.setObjectName('HintLabel')
-        self.template_edit.textChanged.connect(self.options_changed.emit)
+        self.template_edit.textChanged.connect(self._emit_options_changed)
         adv_layout.addWidget(self.template_label)
         adv_layout.addWidget(self.template_edit)
         adv_layout.addWidget(self.template_hint)
@@ -235,8 +234,8 @@ class OptionsPage(QtWidgets.QWidget):
 
         self.live_checkbox = QtWidgets.QCheckBox()
 
-        self.compat_checkbox.toggled.connect(self.options_changed.emit)
-        self.live_checkbox.toggled.connect(self.options_changed.emit)
+        self.compat_checkbox.toggled.connect(self._emit_options_changed)
+        self.live_checkbox.toggled.connect(self._emit_options_changed)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(12)
@@ -290,6 +289,10 @@ class OptionsPage(QtWidgets.QWidget):
         self.advanced_widget.setVisible(checked)
         self.options_changed.emit()
 
+    def _emit_options_changed(self, *args) -> None:
+        """Wrapper to emit options_changed ignoring signal arguments."""
+        self.options_changed.emit()
+
     def set_destination(self, path: str) -> None:
         self.dest_edit.setText(path)
 
@@ -322,6 +325,7 @@ class ImportPage(QtWidgets.QWidget):
     def __init__(self, translator) -> None:
         super().__init__()
         self._tr = translator
+        self._result = None
 
         self.title = QtWidgets.QLabel()
         self.title.setObjectName('PageTitle')
