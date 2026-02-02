@@ -1,9 +1,10 @@
 ﻿from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from domain import CancelToken, DeviceInfo, ImportOptions, ImportPlan, TransferProgress, TransferResult
-from domain.rules import ensure_unique_path, sanitize_filename
+from domain.rules import ensure_unique_path
 from infrastructure.fs.atomic_write import atomic_move
 from infrastructure.fs.logger import create_logger
 from infrastructure.fs.path_utils import get_app_root
@@ -12,9 +13,9 @@ from application.convert_media import conversion_available, convert_media
 
 
 def _temp_path_for(dest_rel: str, temp_dir: Path, object_id: str) -> Path:
-    safe_rel = sanitize_filename(dest_rel.replace('\\', '_').replace('/', '_'), 'file')
-    safe_obj = sanitize_filename(object_id.replace('\\', '_'), 'obj')
-    return temp_dir / f'{safe_rel}_{safe_obj}.part'
+    seed = f'{object_id}|{dest_rel}'.encode('utf-8', errors='ignore')
+    digest = hashlib.sha1(seed).hexdigest()
+    return temp_dir / f'{digest}.part'
 
 
 def execute_transfer(
