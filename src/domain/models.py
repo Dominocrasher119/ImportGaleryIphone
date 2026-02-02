@@ -23,7 +23,16 @@ class DeviceInfo:
         name = (self.name or '').lower()
         manu = (self.manufacturer or '').lower()
         desc = (self.description or '').lower()
-        return 'iphone' in name or 'iphone' in desc or ('apple' in manu and 'iphone' in name)
+        dev_id = (self.id or '').lower()
+        # Check by name/manufacturer/description
+        if 'iphone' in name or 'iphone' in desc:
+            return True
+        if 'apple' in manu and 'iphone' in name:
+            return True
+        # Check by Apple USB Vendor ID (VID 05ac) in device ID
+        if 'vid_05ac' in dev_id:
+            return True
+        return False
 
 
 @dataclass

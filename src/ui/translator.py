@@ -26,7 +26,7 @@ class Translator(QtCore.QObject):
                 f'i18n/{code}.json',
             )
             try:
-                data = json.loads(path.read_text(encoding='utf-8'))
+                data = json.loads(path.read_text(encoding='utf-8-sig'))
             except Exception:
                 data = {}
             self._translations[code] = data

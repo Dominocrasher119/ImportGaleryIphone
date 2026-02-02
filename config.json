@@ -3,6 +3,6 @@
   "structure_preset": "A",
   "template": "{YYYY}/{MM}/",
   "last_destination": "",
-  "keep_live": true,
+  "keep_live": false,
   "create_compat": false
 }

@@ -226,9 +226,13 @@ class WizardWindow(QtWidgets.QMainWindow):
         self.scan_page.set_scanning(True)
         self.scan_page.scan_btn.setEnabled(False)
         self._scan_worker = ScanWorker(self._selected_device)
+        self._scan_worker.progress.connect(self._on_scan_progress)
         self._scan_worker.finished.connect(self._on_scan_finished)
         self._scan_worker.error.connect(self._on_scan_error)
         self._scan_worker.start()
+
+    def _on_scan_progress(self, done: int, total: int, path: str) -> None:
+        self.scan_page.set_scan_progress(done, total, path)
 
     def _on_scan_finished(self, result) -> None:
         self._scan_worker = None

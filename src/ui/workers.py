@@ -10,6 +10,7 @@ from domain import CancelToken, DeviceInfo, ImportOptions, ImportPlan
 class ScanWorker(QtCore.QThread):
     finished = QtCore.Signal(object)
     error = QtCore.Signal(str)
+    progress = QtCore.Signal(int, int, str)  # done, total, path
 
     def __init__(self, device: DeviceInfo) -> None:
         super().__init__()
@@ -17,7 +18,7 @@ class ScanWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            result = scan_device(self._device)
+            result = scan_device(self._device, progress_cb=self.progress.emit)
             self.finished.emit(result)
         except Exception as exc:
             self.error.emit(str(exc))

@@ -12,11 +12,19 @@ class StepIndicator(QtWidgets.QWidget):
         super().__init__()
         self._tr = translator
         self._labels: list[QtWidgets.QLabel] = []
+        self._stretch_added = False
         self._layout = QtWidgets.QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(12)
 
     def set_steps(self, titles: list[str]) -> None:
+        # Just update text if labels already exist (avoid layout shifts)
+        if len(self._labels) == len(titles):
+            for idx, (label, title) in enumerate(zip(self._labels, titles), start=1):
+                label.setText(f'{idx}. {title}')
+            return
+        
+        # Otherwise rebuild labels
         for label in self._labels:
             self._layout.removeWidget(label)
             label.deleteLater()
@@ -24,9 +32,12 @@ class StepIndicator(QtWidgets.QWidget):
         for idx, title in enumerate(titles, start=1):
             label = QtWidgets.QLabel(f'{idx}. {title}')
             label.setProperty('stepActive', False)
+            label.setMinimumWidth(100)  # Fixed minimum width to prevent shifting
             self._layout.addWidget(label)
             self._labels.append(label)
-        self._layout.addStretch(1)
+        if not self._stretch_added:
+            self._layout.addStretch(1)
+            self._stretch_added = True
 
     def set_current(self, index: int) -> None:
         for idx, label in enumerate(self._labels):
@@ -48,6 +59,7 @@ class DevicePage(QtWidgets.QWidget):
         self.title.setObjectName('PageTitle')
         self.instructions = QtWidgets.QLabel()
         self.instructions.setWordWrap(True)
+        self.instructions.setFixedHeight(24)  # Fixed height to prevent layout shifts
 
         self.list = QtWidgets.QListWidget()
         self.list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
@@ -106,6 +118,7 @@ class ScanPage(QtWidgets.QWidget):
         self._tr = translator
         self._model = MediaTableModel(translator)
         self._result: ScanResult | None = None
+        self._current_total = 0
 
         self.title = QtWidgets.QLabel()
         self.title.setObjectName('PageTitle')
@@ -115,6 +128,8 @@ class ScanPage(QtWidgets.QWidget):
         self.progress = QtWidgets.QProgressBar()
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
+        self.progress.setTextVisible(True)
+        self.progress.setFormat('')
 
         self.summary_group = QtWidgets.QGroupBox()
         self.summary_layout = QtWidgets.QGridLayout(self.summary_group)
@@ -156,11 +171,27 @@ class ScanPage(QtWidgets.QWidget):
             self._model.dataChanged.emit(top_left, bottom_right)
 
     def set_scanning(self, scanning: bool) -> None:
+        self._current_total = 0
         if scanning:
             self.progress.setRange(0, 0)
+            self.progress.setFormat(self._tr.tr('scan'))
         else:
             self.progress.setRange(0, 1)
             self.progress.setValue(1)
+            self.progress.setFormat('')
+
+    def set_scan_progress(self, done: int, total: int, path: str) -> None:
+        if total <= 0:
+            self.progress.setRange(0, 0)
+            self.progress.setFormat(self._tr.tr('scan'))
+            return
+        self._current_total = total
+        self.progress.setRange(0, total)
+        self.progress.setValue(min(done, total))
+        label = f'{done}/{total}'
+        if path and path not in ('/', ''):
+            label = f'{label} - {path}'
+        self.progress.setFormat(label)
 
     def set_scan_result(self, result: ScanResult | None) -> None:
         self._result = result
