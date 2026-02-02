@@ -3,15 +3,23 @@
 from datetime import datetime
 from typing import Callable, List, Optional, Tuple
 
-from domain import MediaItem, ScanResult, DeviceInfo
+from domain import CancelToken, MediaItem, ScanResult, DeviceInfo
 from infrastructure.wpd.com_wrapper import list_media_items
 
 
 ProgressCb = Optional[Callable[[int, int, str], None]]
 
 
-def scan_device(device: DeviceInfo, progress_cb: ProgressCb = None) -> ScanResult:
-    items: List[MediaItem] = list_media_items(device.id, progress_cb=progress_cb)
+def scan_device(
+    device: DeviceInfo,
+    progress_cb: ProgressCb = None,
+    cancel_token: CancelToken | None = None,
+) -> ScanResult:
+    items: List[MediaItem] = list_media_items(
+        device.id,
+        progress_cb=progress_cb,
+        cancel_token=cancel_token,
+    )
     photos = sum(1 for i in items if i.is_photo)
     videos = sum(1 for i in items if i.is_video)
     total_size = sum(i.size for i in items)

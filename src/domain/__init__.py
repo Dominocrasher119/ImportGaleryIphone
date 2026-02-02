@@ -13,7 +13,7 @@
     TransferProgress,
     TransferResult,
 )
-from .errors import ConversionError, ScanError, TransferError, WpdError
+from .errors import ConversionError, ScanCancelled, ScanError, TransferError, WpdError
 
 __all__ = [
     'PHOTO_EXTS',
@@ -30,6 +30,7 @@ __all__ = [
     'TransferProgress',
     'TransferResult',
     'ConversionError',
+    'ScanCancelled',
     'ScanError',
     'TransferError',
     'WpdError',

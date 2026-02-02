@@ -6,6 +6,10 @@ class ScanError(Exception):
     pass
 
 
+class ScanCancelled(Exception):
+    pass
+
+
 class TransferError(Exception):
     pass
 

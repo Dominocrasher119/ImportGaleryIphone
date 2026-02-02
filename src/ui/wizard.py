@@ -112,6 +112,7 @@ class DevicePage(QtWidgets.QWidget):
 
 class ScanPage(QtWidgets.QWidget):
     scan_requested = QtCore.Signal()
+    cancel_requested = QtCore.Signal()
 
     def __init__(self, translator) -> None:
         super().__init__()
@@ -125,6 +126,10 @@ class ScanPage(QtWidgets.QWidget):
 
         self.scan_btn = QtWidgets.QPushButton()
         self.scan_btn.clicked.connect(self.scan_requested.emit)
+        self.cancel_btn = QtWidgets.QPushButton()
+        self.cancel_btn.clicked.connect(self.cancel_requested.emit)
+        self.cancel_btn.setVisible(False)
+        self.cancel_btn.setEnabled(False)
         self.progress = QtWidgets.QProgressBar()
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
@@ -153,7 +158,11 @@ class ScanPage(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(12)
         layout.addWidget(self.title)
-        layout.addWidget(self.scan_btn, 0, QtCore.Qt.AlignLeft)
+        btn_row = QtWidgets.QHBoxLayout()
+        btn_row.addWidget(self.scan_btn)
+        btn_row.addWidget(self.cancel_btn)
+        btn_row.addStretch(1)
+        layout.addLayout(btn_row)
         layout.addWidget(self.progress)
         layout.addWidget(self.summary_group)
         layout.addWidget(self.table, 1)
@@ -161,6 +170,7 @@ class ScanPage(QtWidgets.QWidget):
     def retranslate(self) -> None:
         self.title.setText(self._tr.tr('step_scan'))
         self.scan_btn.setText(self._tr.tr('scan'))
+        self.cancel_btn.setText(self._tr.tr('cancel'))
         self.summary_group.setTitle(self._tr.tr('scan_summary'))
         self._model.headerDataChanged.emit(QtCore.Qt.Horizontal, 0, 4)
         if self._result:
@@ -172,6 +182,8 @@ class ScanPage(QtWidgets.QWidget):
 
     def set_scanning(self, scanning: bool) -> None:
         self._current_total = 0
+        self.cancel_btn.setVisible(scanning)
+        self.cancel_btn.setEnabled(scanning)
         if scanning:
             self.progress.setRange(0, 0)
             self.progress.setFormat(self._tr.tr('scan'))
@@ -179,6 +191,11 @@ class ScanPage(QtWidgets.QWidget):
             self.progress.setRange(0, 1)
             self.progress.setValue(1)
             self.progress.setFormat('')
+
+    def set_scan_cancelled(self) -> None:
+        self.progress.setRange(0, 1)
+        self.progress.setValue(0)
+        self.progress.setFormat(self._tr.tr('status_cancelled'))
 
     def set_scan_progress(self, done: int, total: int, path: str) -> None:
         if total <= 0:

@@ -11,7 +11,8 @@ import comtypes
 import comtypes.client
 from comtypes import COMError, GUID
 
-from domain import DeviceInfo, MediaItem, PHOTO_EXTS, VIDEO_EXTS
+from domain import CancelToken, DeviceInfo, MediaItem, PHOTO_EXTS, VIDEO_EXTS
+from domain.errors import ScanCancelled
 from infrastructure.fs.path_utils import ensure_cache_dir
 
 WPD_DEVICE_OBJECT_ID = 'DEVICE'
@@ -349,7 +350,16 @@ def _find_dcim_ids(content, root_id: str, Types) -> list[str]:
 ProgressCb = Optional[Callable[[int, int, str], None]]
 
 
-def list_media_items(device_id: str, progress_cb: ProgressCb = None) -> list[MediaItem]:
+def _check_cancel(cancel_token: CancelToken | None) -> None:
+    if cancel_token and cancel_token.cancelled:
+        raise ScanCancelled()
+
+
+def list_media_items(
+    device_id: str,
+    progress_cb: ProgressCb = None,
+    cancel_token: CancelToken | None = None,
+) -> list[MediaItem]:
     log, log_path = _make_scan_logger()
     items: list[MediaItem] = []
     log(f'Start scan device_id={device_id}')
@@ -367,6 +377,7 @@ def list_media_items(device_id: str, progress_cb: ProgressCb = None) -> list[Med
             stack: list[tuple[str, str, int]] = [(root_id, '', 0)]
 
             while stack:
+                _check_cancel(cancel_token)
                 parent_id, path, depth = stack.pop()
                 if parent_id in visited:
                     continue
@@ -376,6 +387,7 @@ def list_media_items(device_id: str, progress_cb: ProgressCb = None) -> list[Med
                     continue
                 enum = content.EnumObjects(0, parent_id, None)
                 for child_id in _enum_object_ids(enum):
+                    _check_cancel(cancel_token)
                     prop_keys = [keys_dict['OBJECT_NAME'], keys_dict['OBJECT_CONTENT_TYPE']]
                     values = _get_values(props, child_id, prop_keys, Types)
                     name = _safe_get_string(values, keys_dict['OBJECT_NAME'])
@@ -396,6 +408,7 @@ def list_media_items(device_id: str, progress_cb: ProgressCb = None) -> list[Med
             objects_seen = 0
 
             def walk(parent_id: str, current_path: str, depth: int = 0) -> None:
+                _check_cancel(cancel_token)
                 if depth > 16:
                     return
                 if parent_id in visited:
@@ -403,6 +416,7 @@ def list_media_items(device_id: str, progress_cb: ProgressCb = None) -> list[Med
                 visited.add(parent_id)
                 enum = content.EnumObjects(0, parent_id, None)
                 for child_id in _enum_object_ids(enum):
+                    _check_cancel(cancel_token)
                     prop_keys = [keys_dict['OBJECT_NAME'], keys_dict['OBJECT_SIZE'], 
                                  keys_dict['OBJECT_CONTENT_TYPE'], keys_dict['OBJECT_DATE_CREATED'], 
                                  keys_dict['OBJECT_DATE_MODIFIED']]
@@ -451,6 +465,7 @@ def list_media_items(device_id: str, progress_cb: ProgressCb = None) -> list[Med
                     skipped_not_media += 1
 
             for idx, (container_id, container_path, depth) in enumerate(containers, start=1):
+                _check_cancel(cancel_token)
                 # Emit progress before diving into the container to show immediate movement
                 if progress_cb:
                     progress_cb(idx, total_containers, container_path or '/')
@@ -459,6 +474,9 @@ def list_media_items(device_id: str, progress_cb: ProgressCb = None) -> list[Med
                 f'Finished scan. Items found: {len(items)} objects_seen={objects_seen} '
                 f'(skipped_no_ext={skipped_no_ext}, skipped_not_media={skipped_not_media}, skipped_unknown={skipped_unknown})'
             )
+        except ScanCancelled:
+            log('Scan cancelled by user')
+            raise
         except Exception as exc:
             tb = traceback.format_exc()
             log(f'ERROR: {exc}')

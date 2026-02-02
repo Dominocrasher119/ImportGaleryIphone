@@ -24,6 +24,7 @@ class WizardWindow(QtWidgets.QMainWindow):
         self._scan_worker: ScanWorker | None = None
         self._transfer_worker: TransferWorker | None = None
         self._cancel_token: CancelToken | None = None
+        self._scan_cancel_token: CancelToken | None = None
         self._devices: list[DeviceInfo] = []
         self._selected_device: DeviceInfo | None = None
         self._scan_result = None
@@ -110,6 +111,7 @@ class WizardWindow(QtWidgets.QMainWindow):
         self.device_page.device_selected.connect(self._on_device_selected)
 
         self.scan_page.scan_requested.connect(self._start_scan)
+        self.scan_page.cancel_requested.connect(self._cancel_scan)
 
         self.options_page.browse_requested.connect(self._browse_destination)
         self.options_page.options_changed.connect(self._on_options_changed)
@@ -225,22 +227,39 @@ class WizardWindow(QtWidgets.QMainWindow):
             return
         self.scan_page.set_scanning(True)
         self.scan_page.scan_btn.setEnabled(False)
-        self._scan_worker = ScanWorker(self._selected_device)
+        self._scan_cancel_token = CancelToken()
+        self._scan_worker = ScanWorker(self._selected_device, self._scan_cancel_token)
         self._scan_worker.progress.connect(self._on_scan_progress)
         self._scan_worker.finished.connect(self._on_scan_finished)
+        self._scan_worker.cancelled.connect(self._on_scan_cancelled)
         self._scan_worker.error.connect(self._on_scan_error)
         self._scan_worker.start()
+
+    def _cancel_scan(self) -> None:
+        if self._scan_cancel_token:
+            self._scan_cancel_token.cancel()
 
     def _on_scan_progress(self, done: int, total: int, path: str) -> None:
         self.scan_page.set_scan_progress(done, total, path)
 
     def _on_scan_finished(self, result) -> None:
         self._scan_worker = None
+        self._scan_cancel_token = None
         self._scan_result = result
         self.scan_page.set_scanning(False)
         self.scan_page.scan_btn.setEnabled(True)
         self.scan_page.set_scan_result(result)
         self._update_preview()
+        self._update_nav_buttons()
+
+    def _on_scan_cancelled(self) -> None:
+        self._scan_worker = None
+        self._scan_cancel_token = None
+        self._scan_result = None
+        self.scan_page.set_scanning(False)
+        self.scan_page.scan_btn.setEnabled(True)
+        self.scan_page.set_scan_cancelled()
+        self.scan_page.set_scan_result(None)
         self._update_nav_buttons()
 
     def _on_scan_error(self, message: str) -> None:
