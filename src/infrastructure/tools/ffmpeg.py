@@ -11,11 +11,11 @@ def ffmpeg_available(app_root: Path) -> bool:
     return (app_root / 'tools' / 'ffmpeg.exe').is_file()
 
 
-def _run_ffmpeg(app_root: Path, args: list[str], log) -> bool:
+def _run_ffmpeg(app_root: Path, args: list[str], log) -> tuple[bool, str]:
     exe = app_root / 'tools' / 'ffmpeg.exe'
     if not exe.exists():
         log('ffmpeg.exe no encontrado')
-        return False
+        return False, ''
     cmd = [str(exe)] + args
     try:
         result = subprocess.run(
@@ -26,13 +26,29 @@ def _run_ffmpeg(app_root: Path, args: list[str], log) -> bool:
             creationflags=CREATE_NO_WINDOW,
             text=True,
         )
-        if result.stdout:
-            for line in result.stdout.splitlines():
+        output = result.stdout or ''
+        if output:
+            for line in output.splitlines():
                 log(f'ffmpeg: {line}')
-        return result.returncode == 0
+        return result.returncode == 0, output
     except Exception as exc:
         log(f'ffmpeg error: {exc}')
+        return False, ''
+
+
+def _heic_unsupported(output: str) -> bool:
+    text = output.lower()
+    if 'heic' not in text and 'heif' not in text:
         return False
+    markers = [
+        'not supported',
+        'unknown decoder',
+        'decoder',
+        'could not find decoder',
+        'not found',
+        'unsupported',
+    ]
+    return any(marker in text for marker in markers)
 
 
 def convert_heic_to_jpg(app_root: Path, src: Path, dest: Path, log) -> bool:
@@ -43,7 +59,10 @@ def convert_heic_to_jpg(app_root: Path, src: Path, dest: Path, log) -> bool:
         '-q:v', '2',
         str(dest),
     ]
-    return _run_ffmpeg(app_root, args, log)
+    ok, output = _run_ffmpeg(app_root, args, log)
+    if not ok and _heic_unsupported(output):
+        log('ffmpeg does not support HEIC/HEIF in this build')
+    return ok
 
 
 def convert_video_to_mp4(app_root: Path, src: Path, dest: Path, log) -> bool:
@@ -57,7 +76,9 @@ def convert_video_to_mp4(app_root: Path, src: Path, dest: Path, log) -> bool:
         '-pix_fmt', 'yuv420p',
         '-c:a', 'aac',
         '-b:a', '192k',
-        '-movflags', 'use_metadata_tags',
+        '-map_metadata', '0',
+        '-movflags', '+use_metadata_tags',
         str(dest),
     ]
-    return _run_ffmpeg(app_root, args, log)
+    ok, _ = _run_ffmpeg(app_root, args, log)
+    return ok

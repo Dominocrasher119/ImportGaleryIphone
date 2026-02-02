@@ -40,6 +40,9 @@ def execute_transfer(
         if log_cb:
             log_cb(message)
 
+    def log_debug(message: str) -> None:
+        logger.write(message)
+
     total_files = len(plan.items)
     bytes_total = plan.total_size
     bytes_done = 0
@@ -124,7 +127,14 @@ def execute_transfer(
             log_line(f'OK: {dest_path}')
 
             if can_convert:
-                ok_conv, compat_path = convert_media(item, dest_path, dest_path, get_app_root(), log_line)
+                ok_conv, compat_path = convert_media(
+                    item,
+                    dest_path,
+                    dest_path,
+                    get_app_root(),
+                    log_line,
+                    log_debug,
+                )
                 if ok_conv and compat_path:
                     converted += 1
                     log_line(f'COMPAT OK: {compat_path}')
