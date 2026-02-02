@@ -264,9 +264,10 @@ class WizardWindow(QtWidgets.QMainWindow):
 
     def _on_scan_error(self, message: str) -> None:
         self._scan_worker = None
+        self._scan_cancel_token = None
         self.scan_page.set_scanning(False)
         self.scan_page.scan_btn.setEnabled(True)
-        QtWidgets.QMessageBox.warning(self, 'iImport', message)
+        QtWidgets.QMessageBox.warning(self, 'iImport', self._translate_error(message, 'error_scan_failed'))
 
     def _browse_destination(self) -> None:
         path = QtWidgets.QFileDialog.getExistingDirectory(self, self._translator.tr('destination_label'))
@@ -369,7 +370,14 @@ class WizardWindow(QtWidgets.QMainWindow):
         self._import_running = False
         self.import_page.set_running(False)
         self._update_nav_buttons()
-        QtWidgets.QMessageBox.warning(self, 'iImport', message)
+        QtWidgets.QMessageBox.warning(self, 'iImport', self._translate_error(message, 'error_import_failed'))
+
+    def _translate_error(self, message: str, fallback_key: str) -> str:
+        if message:
+            translated = self._translator.tr(message)
+            if translated != message:
+                return translated
+        return self._translator.tr(fallback_key)
 
     def _on_language_changed(self) -> None:
         code = self.lang_combo.currentData()

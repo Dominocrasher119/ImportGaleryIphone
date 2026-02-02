@@ -84,7 +84,7 @@ class DevicePage(QtWidgets.QWidget):
         self._devices = devices
         self.list.clear()
         if not devices:
-            item = QtWidgets.QListWidgetItem(self._tr.tr('device_none'))
+            item = QtWidgets.QListWidgetItem(self._tr.tr('error_no_iphone'))
             item.setFlags(QtCore.Qt.NoItemFlags)
             self.list.addItem(item)
             return
@@ -195,7 +195,7 @@ class ScanPage(QtWidgets.QWidget):
     def set_scan_cancelled(self) -> None:
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
-        self.progress.setFormat(self._tr.tr('status_cancelled'))
+        self.progress.setFormat(self._tr.tr('error_scan_cancelled'))
 
     def set_scan_progress(self, done: int, total: int, path: str) -> None:
         if total <= 0:

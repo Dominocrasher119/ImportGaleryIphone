@@ -10,6 +10,7 @@ from infrastructure.fs.logger import create_logger
 from infrastructure.fs.path_utils import get_app_root
 from infrastructure.wpd.com_wrapper import download_file
 from application.convert_media import conversion_available, convert_media
+from application.core_messages import tr
 
 
 def _temp_path_for(dest_rel: str, temp_dir: Path, object_id: str) -> Path:
@@ -32,6 +33,7 @@ def execute_transfer(
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     logger = create_logger(dest_root, device, options)
+    language = options.language or 'en'
 
     def log_line(message: str) -> None:
         logger.write(message)
@@ -50,11 +52,11 @@ def execute_transfer(
 
     can_convert = options.create_compat and conversion_available(get_app_root())
     if options.create_compat and not can_convert:
-        log_line('Compat desactivado: faltan herramientas en ./tools')
+        log_line(tr(language, 'error_tools_missing'))
 
     for index, plan_item in enumerate(plan.items, start=1):
         if cancel_token and cancel_token.cancelled:
-            log_line('Cancelado por el usuario')
+            log_line(tr(language, 'error_import_cancelled'))
             break
 
         item = plan_item.item
@@ -66,7 +68,7 @@ def execute_transfer(
                 if dest_path.stat().st_size == item.size:
                     skipped += 1
                     bytes_done += item.size
-                    log_line(f'SKIP (igual tamaño): {dest_path.name}')
+                    log_line(f'SKIP (same size): {dest_path.name}')
                     if progress_cb:
                         progress_cb(
                             TransferProgress(
@@ -127,7 +129,7 @@ def execute_transfer(
                     converted += 1
                     log_line(f'COMPAT OK: {compat_path}')
                 elif item.extension.lower() in ('.heic', '.heif', '.mov', '.m4v'):
-                    log_line(f'COMPAT ERROR: {dest_path.name}')
+                    log_line(tr(language, 'error_conversion_failed').format(name=dest_path.name))
         except Exception as exc:
             failed += 1
             errors.append(f'Error copiando {item.name}: {exc}')

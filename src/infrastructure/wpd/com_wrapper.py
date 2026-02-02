@@ -12,7 +12,7 @@ import comtypes.client
 from comtypes import COMError, GUID
 
 from domain import CancelToken, DeviceInfo, MediaItem, PHOTO_EXTS, VIDEO_EXTS
-from domain.errors import ScanCancelled
+from domain.errors import ScanCancelled, ScanError
 from infrastructure.fs.path_utils import ensure_cache_dir
 
 WPD_DEVICE_OBJECT_ID = 'DEVICE'
@@ -481,7 +481,7 @@ def list_media_items(
             tb = traceback.format_exc()
             log(f'ERROR: {exc}')
             log(tb)
-            raise RuntimeError(f'Scan failed. See log: {log_path}') from exc
+            raise ScanError('error_scan_failed', detail=str(log_path)) from exc
         finally:
             try:
                 device.Close()
