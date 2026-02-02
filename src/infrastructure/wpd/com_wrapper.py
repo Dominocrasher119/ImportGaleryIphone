@@ -497,44 +497,82 @@ def download_file(
     progress_cb,
     cancel_token,
 ) -> bool:
+    try:
+        with open_device_session(device_id) as session:
+            return session.download(object_id, dest_path, progress_cb, cancel_token)
+    except COMError:
+        return False
+
+
+class DeviceSession:
+    def __init__(self, device, resources, keys_dict) -> None:
+        self._device = device
+        self._resources = resources
+        self._keys = keys_dict
+
+    def download(
+        self,
+        object_id: str,
+        dest_path: Path,
+        progress_cb,
+        cancel_token,
+    ) -> bool:
+        optimal = ctypes.c_ulong(0)
+        stream = None
+        try:
+            result = self._resources.GetStream(
+                object_id,
+                self._keys['RESOURCE_DEFAULT'],
+                STGM_READ,
+                ctypes.byref(optimal),
+            )
+            if isinstance(result, tuple):
+                stream = result[0]
+                if len(result) > 1 and isinstance(result[1], int):
+                    optimal = ctypes.c_ulong(result[1])
+            else:
+                stream = result
+        except COMError:
+            raise
+        except Exception:
+            stream = self._resources.GetStream(
+                object_id,
+                self._keys['RESOURCE_DEFAULT'],
+                STGM_READ,
+                ctypes.byref(optimal),
+            )
+
+        chunk_size = max(int(optimal.value) if optimal.value else 65536, 65536)
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        bytes_done = 0
+        with dest_path.open('wb') as handle:
+            while True:
+                if cancel_token and cancel_token.cancelled:
+                    return False
+                try:
+                    data = stream.Read(chunk_size)
+                except COMError:
+                    raise
+                if isinstance(data, tuple):
+                    data = data[0]
+                if not data:
+                    break
+                handle.write(data)
+                bytes_done += len(data)
+                if progress_cb:
+                    progress_cb(bytes_done)
+        return True
+
+
+@contextmanager
+def open_device_session(device_id: str) -> Iterator[DeviceSession]:
     with com_context():
         device, API, Types = _open_device(device_id)
         keys_dict = _get_wpd_keys(Types)
         try:
             content = device.Content()
             resources = content.Transfer()
-            optimal = ctypes.c_ulong(0)
-            stream = None
-            try:
-                result = resources.GetStream(object_id, keys_dict['RESOURCE_DEFAULT'], STGM_READ, ctypes.byref(optimal))
-                if isinstance(result, tuple):
-                    stream = result[0]
-                    if len(result) > 1 and isinstance(result[1], int):
-                        optimal = ctypes.c_ulong(result[1])
-                else:
-                    stream = result
-            except Exception:
-                stream = resources.GetStream(object_id, keys_dict['RESOURCE_DEFAULT'], STGM_READ, ctypes.byref(optimal))
-
-            chunk_size = max(int(optimal.value) if optimal.value else 65536, 65536)
-            dest_path.parent.mkdir(parents=True, exist_ok=True)
-            bytes_done = 0
-            with dest_path.open('wb') as handle:
-                while True:
-                    if cancel_token and cancel_token.cancelled:
-                        return False
-                    data = stream.Read(chunk_size)
-                    if isinstance(data, tuple):
-                        data = data[0]
-                    if not data:
-                        break
-                    handle.write(data)
-                    bytes_done += len(data)
-                    if progress_cb:
-                        progress_cb(bytes_done)
-            return True
-        except COMError:
-            return False
+            yield DeviceSession(device, resources, keys_dict)
         finally:
             try:
                 device.Close()
