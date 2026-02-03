@@ -24,6 +24,7 @@ hiddenimports = collect_submodules('comtypes') + collect_submodules('win32comext
     'win32comext.shell.shell',
     'win32comext.propsys',
     'win32comext.propsys.propsys',
+    'win32comext.propsys.pscon',
 ]
 
 block_cipher = None

@@ -4,6 +4,7 @@ Uses Windows Shell API (IShellFolder/IShellItem) which has better iPhone support
 """
 from __future__ import annotations
 
+import base64
 import os
 from datetime import datetime
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Callable, Optional
 
 import pythoncom
 from win32comext.shell import shell, shellcon
+from win32comext.propsys import propsys, pscon
 
 from domain import CancelToken, DeviceInfo, MediaItem, PHOTO_EXTS, VIDEO_EXTS
 from domain.errors import ScanCancelled, ScanError
@@ -33,6 +35,48 @@ def _make_scan_logger():
             pass
 
     return _log, log_path
+
+
+def _pidl_to_object_id(pidl) -> str | None:
+    try:
+        stream = pythoncom.CreateStreamOnHGlobal(None, True)
+        shell.ILSaveToStream(stream, pidl)
+        stream.Seek(0, 0)
+        size = shell.ILGetSize(pidl)
+        data = stream.Read(size)
+        if isinstance(data, tuple):
+            data = data[0]
+        if not data:
+            return None
+        return f'pidl:{base64.b64encode(data).decode("ascii")}'
+    except Exception:
+        return None
+
+
+def _object_id_to_shell_item(object_id: str):
+    if object_id.startswith('pidl:'):
+        payload = object_id[5:]
+        data = base64.b64decode(payload)
+        stream = pythoncom.CreateStreamOnHGlobal(None, True)
+        stream.Write(data)
+        stream.Seek(0, 0)
+        pidl = shell.ILLoadFromStream(stream)
+        return shell.SHCreateItemFromIDList(pidl, shell.IID_IShellItem)
+    return shell.SHCreateItemFromParsingName(object_id, None, shell.IID_IShellItem)
+
+
+def _coerce_datetime(value) -> datetime | None:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None)
+    try:
+        return datetime.fromtimestamp(value.timestamp()).replace(tzinfo=None)
+    except Exception:
+        try:
+            return datetime(value.year, value.month, value.day, value.hour, value.minute, value.second)
+        except Exception:
+            return None
 
 
 def _get_desktop_shell_folder():
@@ -173,6 +217,12 @@ def _walk_shell_folder(shell_folder, path: str, items: list, log, cancel_token, 
     
     # Enumerate files
     try:
+        folder_pidl_abs = None
+        try:
+            folder_pidl_abs = shell.SHGetIDListFromObject(shell_folder)
+        except Exception:
+            folder_pidl_abs = None
+
         folder_new_items = []
         for file_pidl in shell_folder.EnumObjects(0, shellcon.SHCONTF_NONFOLDERS):
             if cancel_token and cancel_token.cancelled:
@@ -192,26 +242,66 @@ def _walk_shell_folder(shell_folder, path: str, items: list, log, cancel_token, 
                 
                 # Get shell item for more info
                 try:
-                    folder_pidl_abs = shell.SHGetIDListFromObject(shell_folder)
-                    shell_item = shell.SHCreateShellItem(folder_pidl_abs, None, file_pidl)
-                    abs_path = shell_item.GetDisplayName(shellcon.SIGDN_DESKTOPABSOLUTEEDITING)
+                    if folder_pidl_abs:
+                        pidl_abs_file = shell.ILCombine(folder_pidl_abs, file_pidl)
+                        shell_item = shell.SHCreateItemFromIDList(pidl_abs_file, shell.IID_IShellItem)
+                    else:
+                        pidl_abs_file = None
+                        shell_item = shell.SHCreateShellItem(None, None, file_pidl)
+
+                    object_id = None
+                    if pidl_abs_file:
+                        object_id = _pidl_to_object_id(pidl_abs_file)
+
+                    if not object_id:
+                        try:
+                            object_id = shell_item.GetDisplayName(shellcon.SIGDN_DESKTOPABSOLUTEPARSING)
+                        except Exception:
+                            object_id = None
+
+                    try:
+                        abs_path = shell_item.GetDisplayName(shellcon.SIGDN_DESKTOPABSOLUTEEDITING)
+                    except Exception:
+                        abs_path = f'{path}\\{file_name}' if path else file_name
                 except Exception:
-                    abs_path = f'{path}\\{file_name}'
+                    object_id = None
+                    pidl_abs_file = None
+                    abs_path = f'{path}\\{file_name}' if path else file_name
                     shell_item = None
                 
-                # Try to get size (from shell item attributes if available)
-                size = 0
+                # Try to get size/created using property store (language-independent)
+                size = -1
                 created = None
+                if pidl_abs_file:
+                    try:
+                        store = propsys.SHGetPropertyStoreFromIDList(pidl_abs_file)
+                    except Exception:
+                        store = None
+                    if store:
+                        try:
+                            size_val = store.GetValue(pscon.PKEY_Size).GetValue()
+                            if size_val is not None:
+                                size = int(size_val)
+                        except Exception:
+                            pass
+                        for key in (pscon.PKEY_Photo_DateTaken, pscon.PKEY_Media_DateEncoded, pscon.PKEY_DateCreated):
+                            try:
+                                dt_val = store.GetValue(key).GetValue()
+                                created = _coerce_datetime(dt_val)
+                                if created:
+                                    break
+                            except Exception:
+                                continue
                 
                 # Create MediaItem
                 item = MediaItem(
                     device_id='shell',  # Will be updated by caller
-                    object_id=abs_path,  # Use absolute path as object_id
+                    object_id=object_id or abs_path,  # Robust object_id preferred
                     name=file_name,
                     extension=extension,
                     size=size,
                     created=created,
-                    device_path=f'{path}\\{file_name}' if path else file_name,
+                    device_path=abs_path or (f'{path}\\{file_name}' if path else file_name),
                     content_type='',
                 )
                 items.append(item)
@@ -298,14 +388,14 @@ def list_media_items_shell(
 
 
 def download_file_shell(
-    object_id: str,  # This is the absolute shell path
+    object_id: str,  # PIDL or absolute shell parsing name
     dest_path: Path,
     progress_cb,
     cancel_token,
 ) -> bool:
-    """
+    r"""
     Download a file from iPhone using Windows Shell API.
-    object_id is the absolute shell path (e.g., "This PC\Apple iPhone\Internal Storage\DCIM\...")
+    object_id can be a PIDL token or an absolute shell parsing name (e.g., "This PC\Apple iPhone\Internal Storage\DCIM\...").
     """
     pythoncom.CoInitialize()
     try:
@@ -313,7 +403,7 @@ def download_file_shell(
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Get source shell item
-        source_item = shell.SHCreateItemFromParsingName(object_id, None, shell.IID_IShellItem)
+        source_item = _object_id_to_shell_item(object_id)
         
         # Get destination folder shell item
         dest_folder = shell.SHCreateItemFromParsingName(str(dest_path.parent), None, shell.IID_IShellItem)

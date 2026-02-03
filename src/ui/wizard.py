@@ -505,11 +505,20 @@ class ImportPage(QtWidgets.QWidget):
         if progress.bytes_total > 0:
             self.progress_global.setMaximum(int(progress.bytes_total / scale))
             self.progress_global.setValue(int(progress.bytes_done / scale))
+        elif progress.total_files > 0:
+            self.progress_global.setMaximum(progress.total_files)
+            self.progress_global.setValue(progress.current_index)
         if progress.current_total > 0:
             self.progress_file.setMaximum(int(progress.current_total / scale))
             self.progress_file.setValue(int(progress.current_bytes / scale))
         if progress.current_file:
             self.file_label.setText(f"{self._tr.tr('progress_file')}: {progress.current_file}")
+
+        if progress.total_files > 0:
+            percent = int(100 * progress.current_index / progress.total_files)
+            self.progress_label.setText(
+                f"{self._tr.tr('progress_global')}: {percent}%  ({progress.current_index}/{progress.total_files})"
+            )
 
     def set_result(self, result) -> None:
         self._result = result

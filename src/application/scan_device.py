@@ -25,7 +25,7 @@ def scan_device(
     )
     photos = sum(1 for i in items if i.is_photo)
     videos = sum(1 for i in items if i.is_video)
-    total_size = sum(i.size for i in items)
+    total_size = sum(i.size for i in items if i.size and i.size > 0)
     dates = [i.created for i in items if i.created]
     date_min = min(dates) if dates else None
     date_max = max(dates) if dates else None

@@ -764,8 +764,8 @@ def download_file(
     Download a file from device.
     Tries Shell API first if object_id looks like a shell parsing name.
     """
-    # Shell parsing names start with ::{ (CLSID format) - this is reliable detection
-    if object_id.startswith('::{'):
+    # Shell parsing names start with ::{ (CLSID format) or pidl:
+    if object_id.startswith('::{') or object_id.startswith('pidl:'):
         try:
             from infrastructure.wpd.shell_wrapper import download_file_shell
             return download_file_shell(object_id, dest_path, progress_cb, cancel_token)
