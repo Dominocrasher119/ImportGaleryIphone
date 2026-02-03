@@ -1,4 +1,5 @@
 ﻿PySide6>=6.6
 comtypes>=1.2.0
+pywin32>=306
 pytest>=7.4
 pyinstaller>=6.4

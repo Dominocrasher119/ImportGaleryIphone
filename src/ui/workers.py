@@ -13,6 +13,7 @@ class ScanWorker(QtCore.QThread):
     cancelled = QtCore.Signal()
     error = QtCore.Signal(str)
     progress = QtCore.Signal(int, int, str)  # done, total, path
+    items_found = QtCore.Signal(list)  # Partial list of new items found
 
     def __init__(self, device: DeviceInfo, cancel_token: CancelToken) -> None:
         super().__init__()
@@ -24,6 +25,7 @@ class ScanWorker(QtCore.QThread):
             result = scan_device(
                 self._device,
                 progress_cb=self.progress.emit,
+                items_cb=self.items_found.emit,
                 cancel_token=self._cancel_token,
             )
             self.finished.emit(result)

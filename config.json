@@ -1,8 +1,8 @@
 {
-  "language": "ca",
-  "structure_preset": "A",
+  "language": "es",
+  "structure_preset": "C",
   "template": "{YYYY}/{MM}/",
-  "last_destination": "",
-  "keep_live": false,
+  "last_destination": "D:/Test Export",
+  "keep_live": true,
   "create_compat": false
 }

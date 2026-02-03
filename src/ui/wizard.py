@@ -185,8 +185,14 @@ class ScanPage(QtWidgets.QWidget):
         self.cancel_btn.setVisible(scanning)
         self.cancel_btn.setEnabled(scanning)
         if scanning:
+            self._model.clear_items()  # Clear previous results
             self.progress.setRange(0, 0)
             self.progress.setFormat(self._tr.tr('scan'))
+            # Clear summary while scanning
+            self.lbl_photos.setText(f"{self._tr.tr('scan_photos')}: ...")
+            self.lbl_videos.setText(f"{self._tr.tr('scan_videos')}: ...")
+            self.lbl_size.setText(f"{self._tr.tr('scan_total_size')}: ...")
+            self.lbl_dates.setText(f"{self._tr.tr('scan_date_range')}: ...")
         else:
             self.progress.setRange(0, 1)
             self.progress.setValue(1)
@@ -198,17 +204,31 @@ class ScanPage(QtWidgets.QWidget):
         self.progress.setFormat(self._tr.tr('error_scan_cancelled'))
 
     def set_scan_progress(self, done: int, total: int, path: str) -> None:
-        if total <= 0:
-            self.progress.setRange(0, 0)
-            self.progress.setFormat(self._tr.tr('scan'))
-            return
-        self._current_total = total
-        self.progress.setRange(0, total)
-        self.progress.setValue(min(done, total))
-        label = f'{done}/{total}'
+        # done = media found, total = folders scanned
+        # Update progress bar text with current status
+        media_count = self._model.rowCount()
+        label = f'📷 {media_count}'
+        if total > 0:
+            label = f'{label} | 📁 {total}'
         if path and path not in ('/', ''):
-            label = f'{label} - {path}'
+            # Show just the last folder name for brevity
+            short_path = path.split('\\')[-1] if '\\' in path else path
+            label = f'{label} | {short_path}'
         self.progress.setFormat(label)
+        
+        # Update live counts in summary
+        items = self._model.get_items()
+        photos = sum(1 for i in items if i.is_photo)
+        videos = sum(1 for i in items if i.is_video)
+        self.lbl_photos.setText(f"{self._tr.tr('scan_photos')}: {photos}")
+        self.lbl_videos.setText(f"{self._tr.tr('scan_videos')}: {videos}")
+
+    def add_scan_items(self, new_items: list) -> None:
+        """Add newly found items to the table in real-time."""
+        self._model.append_items(new_items)
+        # Scroll to bottom to show newest items
+        if new_items:
+            self.table.scrollToBottom()
 
     def set_scan_result(self, result: ScanResult | None) -> None:
         self._result = result

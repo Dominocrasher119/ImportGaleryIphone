@@ -20,6 +20,26 @@ class MediaTableModel(QtCore.QAbstractTableModel):
         self._items = items
         self.endResetModel()
 
+    def append_items(self, new_items: List[MediaItem]) -> None:
+        """Append new items to the model for real-time updates."""
+        if not new_items:
+            return
+        first_new = len(self._items)
+        last_new = first_new + len(new_items) - 1
+        self.beginInsertRows(QtCore.QModelIndex(), first_new, last_new)
+        self._items.extend(new_items)
+        self.endInsertRows()
+
+    def clear_items(self) -> None:
+        """Clear all items from the model."""
+        self.beginResetModel()
+        self._items = []
+        self.endResetModel()
+
+    def get_items(self) -> List[MediaItem]:
+        """Get all items currently in the model."""
+        return self._items
+
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self._items)
 

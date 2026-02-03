@@ -230,6 +230,7 @@ class WizardWindow(QtWidgets.QMainWindow):
         self._scan_cancel_token = CancelToken()
         self._scan_worker = ScanWorker(self._selected_device, self._scan_cancel_token)
         self._scan_worker.progress.connect(self._on_scan_progress)
+        self._scan_worker.items_found.connect(self.scan_page.add_scan_items)
         self._scan_worker.finished.connect(self._on_scan_finished)
         self._scan_worker.cancelled.connect(self._on_scan_cancelled)
         self._scan_worker.error.connect(self._on_scan_error)

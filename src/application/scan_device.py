@@ -8,16 +8,19 @@ from infrastructure.wpd.com_wrapper import list_media_items
 
 
 ProgressCb = Optional[Callable[[int, int, str], None]]
+ItemsCb = Optional[Callable[[List[MediaItem]], None]]
 
 
 def scan_device(
     device: DeviceInfo,
     progress_cb: ProgressCb = None,
+    items_cb: ItemsCb = None,
     cancel_token: CancelToken | None = None,
 ) -> ScanResult:
     items: List[MediaItem] = list_media_items(
         device.id,
         progress_cb=progress_cb,
+        items_cb=items_cb,
         cancel_token=cancel_token,
     )
     photos = sum(1 for i in items if i.is_photo)
