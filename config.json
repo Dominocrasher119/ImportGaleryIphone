@@ -1,6 +1,6 @@
 {
   "language": "es",
-  "structure_preset": "C",
+  "structure_preset": "B",
   "template": "{YYYY}/{MM}/",
   "last_destination": "D:/Test Export",
   "keep_live": true,

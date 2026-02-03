@@ -15,7 +15,16 @@ tools_dir = os.path.join(project_dir, 'tools')
 if os.path.isdir(tools_dir):
     datas.append((tools_dir, 'tools'))
 
-hiddenimports = collect_submodules('comtypes')
+hiddenimports = collect_submodules('comtypes') + collect_submodules('win32comext') + [
+    'pythoncom',
+    'pywintypes',
+    'win32com',
+    'win32com.shell',
+    'win32comext.shell',
+    'win32comext.shell.shell',
+    'win32comext.propsys',
+    'win32comext.propsys.propsys',
+]
 
 block_cipher = None
 

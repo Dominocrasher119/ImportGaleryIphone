@@ -762,10 +762,10 @@ def download_file(
 ) -> bool:
     """
     Download a file from device.
-    Tries Shell API first if object_id looks like a shell path.
+    Tries Shell API first if object_id looks like a shell parsing name.
     """
-    # If object_id contains backslashes, it's likely a shell path
-    if '\\' in object_id and ('iPhone' in object_id or 'Storage' in object_id):
+    # Shell parsing names start with ::{ (CLSID format) - this is reliable detection
+    if object_id.startswith('::{'):
         try:
             from infrastructure.wpd.shell_wrapper import download_file_shell
             return download_file_shell(object_id, dest_path, progress_cb, cancel_token)

@@ -60,6 +60,8 @@ def detect_system_language() -> str:
 
 
 def format_bytes(num: int) -> str:
+    if num < 0:
+        return '—'  # Unknown size
     step = 1024.0
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if num < step:

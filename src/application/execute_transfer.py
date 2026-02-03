@@ -75,7 +75,8 @@ def execute_transfer(
 
                 if dest_path.exists():
                     try:
-                        if dest_path.stat().st_size == item.size:
+                        # Only skip if we have a valid known size (> 0) to compare
+                        if item.size > 0 and dest_path.stat().st_size == item.size:
                             skipped += 1
                             bytes_done += item.size
                             log_line(f'SKIP (same size): {dest_path.name}')
